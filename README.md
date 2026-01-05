@@ -36,6 +36,18 @@ Open the UI:
 http://<mac-ip>:8765
 ```
 
+Controls:
+- Arrow left/right for previous/next
+- Space for next
+
+## Logging
+On first start the app indexes your entire Photos library, which can take time with large libraries. While indexing, the server stays up and `/api/status` returns `indexing: true`.
+
+To check status:
+```
+curl http://localhost:8765/api/status
+```
+
 ## Configuration
 Edit `config.json`:
 - `session_gap_minutes`: time gap that starts a new shoot session.
@@ -44,6 +56,16 @@ Edit `config.json`:
 - `transition_ms`: fade duration.
 - `fit_mode`: `contain` or `cover`.
 - `max_image_width` / `max_image_height`: cached image size.
+
+## Randomization logic
+The goal is to avoid oversampling large shoots while still keeping the display fresh:
+
+- **Session grouping**: Photos are sorted by capture time and grouped into sessions using `session_gap_minutes`. Each session represents a shoot.
+- **Session selection**:  
+  - `shuffle`: creates a randomized list of sessions and walks it once before reshuffling.  
+  - `random`: chooses any session at random; if `avoid_consecutive_sessions` is true, it avoids picking the same session twice in a row.
+- **Photo selection**: Once a session is chosen, a single photo is picked uniformly at random from that session.
+- **History**: The server keeps a short in-memory history so the UI can go back/forward with arrow keys.
 
 ## Troubleshooting
 - **No photos**: confirm your Fujifilm EXIF make is `FUJIFILM`. If not, add your specific model in `camera_model_allowlist`.

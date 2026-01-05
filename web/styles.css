@@ -78,6 +78,39 @@ body {
   opacity: 0.7;
 }
 
+.nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(14, 15, 18, 0.35);
+  color: var(--text);
+  font-size: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.nav-btn.left {
+  left: 20px;
+}
+
+.nav-btn.right {
+  right: 20px;
+}
+
+.nav-btn:hover,
+.nav-btn:focus {
+  opacity: 0.9;
+  background: rgba(14, 15, 18, 0.55);
+  outline: none;
+}
+
 @media (max-width: 900px) {
   .caption {
     font-size: 12px;
@@ -90,5 +123,11 @@ body {
     font-size: 12px;
     top: 16px;
     right: 16px;
+  }
+
+  .nav-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 26px;
   }
 }

@@ -2,6 +2,8 @@ const imgA = document.getElementById("img-a");
 const imgB = document.getElementById("img-b");
 const caption = document.getElementById("caption");
 const status = document.getElementById("status");
+const prevBtn = document.getElementById("prev-btn");
+const nextBtn = document.getElementById("next-btn");
 
 let showingA = true;
 let config = {
@@ -9,6 +11,8 @@ let config = {
   transition_ms: 1200,
   fit_mode: "contain",
 };
+let nextTimer = null;
+let isLoading = false;
 
 async function fetchJson(path) {
   const resp = await fetch(path, { cache: "no-store" });
@@ -46,10 +50,34 @@ function updateCaption(data) {
   caption.classList.remove("hidden");
 }
 
-async function loadNext() {
+function scheduleNext() {
+  if (nextTimer) {
+    clearTimeout(nextTimer);
+  }
+  nextTimer = setTimeout(() => {
+    loadFrom("/api/next");
+  }, config.change_interval_seconds * 1000);
+}
+
+function setStatus(message, clearAfterMs = 0) {
+  status.textContent = message;
+  if (clearAfterMs) {
+    setTimeout(() => {
+      if (status.textContent === message) {
+        status.textContent = "";
+      }
+    }, clearAfterMs);
+  }
+}
+
+async function loadFrom(endpoint) {
+  if (isLoading) {
+    return;
+  }
+  isLoading = true;
   try {
-    status.textContent = "Loading…";
-    const data = await fetchJson("/api/next");
+    setStatus("Loading…");
+    const data = await fetchJson(endpoint);
     const target = showingA ? imgB : imgA;
     target.onload = () => {
       target.classList.add("visible");
@@ -57,17 +85,24 @@ async function loadNext() {
       other.classList.remove("visible");
       showingA = !showingA;
       updateCaption(data);
-      status.textContent = "";
-      setTimeout(loadNext, config.change_interval_seconds * 1000);
+      setStatus("");
+      isLoading = false;
+      scheduleNext();
     };
     target.onerror = () => {
-      status.textContent = "Image failed to load. Retrying…";
-      setTimeout(loadNext, 5000);
+      setStatus("Image failed to load. Retrying…");
+      isLoading = false;
+      setTimeout(() => loadFrom("/api/next"), 5000);
     };
     target.src = data.url;
   } catch (err) {
-    status.textContent = "Waiting for photos…";
-    setTimeout(loadNext, 5000);
+    if (endpoint === "/api/prev") {
+      setStatus("No previous photo", 1500);
+    } else {
+      setStatus("Waiting for photos…");
+    }
+    isLoading = false;
+    setTimeout(() => loadFrom("/api/next"), 5000);
   }
 }
 
@@ -80,7 +115,19 @@ async function init() {
   setFitMode(config.fit_mode);
   imgA.style.transitionDuration = `${config.transition_ms}ms`;
   imgB.style.transitionDuration = `${config.transition_ms}ms`;
-  await loadNext();
+  await loadFrom("/api/next");
 }
+
+prevBtn.addEventListener("click", () => loadFrom("/api/prev"));
+nextBtn.addEventListener("click", () => loadFrom("/api/next"));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "ArrowRight" || event.key === " ") {
+    event.preventDefault();
+    loadFrom("/api/next");
+  } else if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    loadFrom("/api/prev");
+  }
+});
 
 init();
