@@ -54,7 +54,7 @@ Edit `config.json`:
 - `selection_mode`: `shuffle` (default) or `random`.
 - `change_interval_seconds`: time between photos.
 - `transition_ms`: fade duration.
-- `fit_mode`: `contain` or `cover`.
+- `fit_mode`: `cover` (default) or `contain`.
 - `max_image_width` / `max_image_height`: cached image size.
 
 ## Randomization logic

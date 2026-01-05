@@ -21,7 +21,7 @@ class AppConfig:
     avoid_consecutive_sessions: bool = True
     change_interval_seconds: int = 120
     transition_ms: int = 1200
-    fit_mode: str = "contain"  # "contain" or "cover"
+    fit_mode: str = "cover"  # "contain" or "cover"
     max_image_width: int = 1920
     max_image_height: int = 1080
     jpeg_quality: int = 85

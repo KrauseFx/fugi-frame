@@ -8,7 +8,7 @@
   "avoid_consecutive_sessions": true,
   "change_interval_seconds": 120,
   "transition_ms": 1200,
-  "fit_mode": "contain",
+  "fit_mode": "cover",
   "max_image_width": 1920,
   "max_image_height": 1080,
   "jpeg_quality": 85,

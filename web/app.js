@@ -7,7 +7,7 @@ let showingA = true;
 let config = {
   change_interval_seconds: 120,
   transition_ms: 1200,
-  fit_mode: "contain",
+  fit_mode: "cover",
 };
 let nextTimer = null;
 let isLoading = false;
