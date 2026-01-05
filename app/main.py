@@ -19,7 +19,7 @@ def _build_app(config: AppConfig) -> FastAPI:
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     logger = logging.getLogger("fuji_frame")
-    app = FastAPI(title="Fuji Frame")
+    app = FastAPI(title="Fugi Frame")
 
     index = LibraryIndex(config)
     app.state.index_error = None
@@ -138,7 +138,7 @@ def _build_app(config: AppConfig) -> FastAPI:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fuji Frame server")
+    parser = argparse.ArgumentParser(description="Fugi Frame server")
     parser.add_argument(
         "--config",
         dest="config_path",

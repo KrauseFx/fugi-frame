@@ -1,6 +1,9 @@
-# Fuji Frame
+# Fugi Frame
 
-A lightweight local web server for showing Fujifilm-only photos from Apple Photos, balanced by shoot sessions, on any device with a browser.
+A lightweight local web server for showing camera-filtered photos from Apple Photos, balanced by shoot sessions, on any device with a browser.
+
+## Disclaimer
+Fugi Frame is an independent project and is not affiliated with, endorsed by, or sponsored by Fujifilm.
 
 ## How it works
 - Reads the local Apple Photos library on macOS.
@@ -56,6 +59,18 @@ Edit `config.json`:
 - `transition_ms`: fade duration.
 - `fit_mode`: `cover` (default) or `contain`.
 - `max_image_width` / `max_image_height`: cached image size.
+
+### Camera filter
+By default, the app only indexes photos whose camera make matches `FUJIFILM`.
+To customize:
+
+- Edit `config.json`:
+  - `camera_make_allowlist`: e.g. `["CANON"]` or `["SONY", "NIKON"]`
+  - `camera_model_allowlist`: optional narrower filter, e.g. `["X-T5"]`
+- Or override via env vars (comma-separated):
+  ```
+  FUJI_FRAME_CAMERA_MAKE=CANON,SONY FUJI_FRAME_CAMERA_MODEL=R5 python3 -m app.main --config config.json
+  ```
 
 ## Randomization logic
 The goal is to avoid oversampling large shoots while still keeping the display fresh:

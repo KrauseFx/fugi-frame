@@ -41,7 +41,7 @@ def load_config(path: Optional[str] = None) -> AppConfig:
     if os.path.exists(config_path):
         with open(config_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return AppConfig(
+        config = AppConfig(
             bind=data.get("bind", defaults.bind),
             port=int(data.get("port", defaults.port)),
             camera_make_allowlist=data.get("camera_make_allowlist", defaults.camera_make_allowlist),
@@ -65,4 +65,22 @@ def load_config(path: Optional[str] = None) -> AppConfig:
             ),
             random_seed=data.get("random_seed", defaults.random_seed),
         )
-    return defaults
+    else:
+        config = defaults
+
+    env_makes = _parse_env_list("FUJI_FRAME_CAMERA_MAKE")
+    env_models = _parse_env_list("FUJI_FRAME_CAMERA_MODEL")
+    if env_makes is not None:
+        config.camera_make_allowlist = env_makes
+    if env_models is not None:
+        config.camera_model_allowlist = env_models
+
+    return config
+
+
+def _parse_env_list(key: str) -> Optional[List[str]]:
+    raw = os.environ.get(key)
+    if raw is None:
+        return None
+    items = [item.strip() for item in raw.split(",") if item.strip()]
+    return items
