@@ -10,4 +10,4 @@ if [[ ! -d "$ROOT_DIR/.venv" ]]; then
 fi
 
 source "$ROOT_DIR/.venv/bin/activate"
-python -m app.main --config "$CONFIG_PATH"
+python3 -m app.main --config "$CONFIG_PATH"

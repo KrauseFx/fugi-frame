@@ -28,7 +28,7 @@ cp config.example.json config.json
 ## Run
 ```bash
 source .venv/bin/activate
-python -m app.main --config config.json
+python3 -m app.main --config config.json
 ```
 
 Open the UI:
