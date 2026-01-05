@@ -2,8 +2,6 @@ const imgA = document.getElementById("img-a");
 const imgB = document.getElementById("img-b");
 const caption = document.getElementById("caption");
 const status = document.getElementById("status");
-const prevBtn = document.getElementById("prev-btn");
-const nextBtn = document.getElementById("next-btn");
 
 let showingA = true;
 let config = {
@@ -118,8 +116,6 @@ async function init() {
   await loadFrom("/api/next");
 }
 
-prevBtn.addEventListener("click", () => loadFrom("/api/prev"));
-nextBtn.addEventListener("click", () => loadFrom("/api/next"));
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight" || event.key === " ") {
     event.preventDefault();
