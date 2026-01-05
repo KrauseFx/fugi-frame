@@ -1,0 +1,18 @@
+{
+  "bind": "0.0.0.0",
+  "port": 8765,
+  "camera_make_allowlist": ["FUJIFILM"],
+  "camera_model_allowlist": [],
+  "session_gap_minutes": 10,
+  "selection_mode": "shuffle",
+  "avoid_consecutive_sessions": true,
+  "change_interval_seconds": 120,
+  "transition_ms": 1200,
+  "fit_mode": "contain",
+  "max_image_width": 1920,
+  "max_image_height": 1080,
+  "jpeg_quality": 85,
+  "cache_dir": "~/.fuji-frame/cache",
+  "index_refresh_minutes": 60,
+  "random_seed": null
+}

@@ -1,0 +1,4 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+osxphotos>=0.69
+Pillow>=10.0
