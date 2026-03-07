@@ -146,76 +146,82 @@ class ImmichSource:
         allow_makes = {m.upper() for m in self._config.camera_make_allowlist if m}
         allow_models = {m.upper() for m in self._config.camera_model_allowlist if m}
 
-        headers = {"x-api-key": self._config.immich_api_key}
+        headers = {
+            "x-api-key": self._config.immich_api_key,
+            "Content-Type": "application/json",
+        }
         page = 1
         size = 1000
         fetched_count = 0
         matched_count = 0
         records: List[PhotoRecord] = []
 
+        # Build server-side make filter — pass each allowed make to Immich
+        # (Immich search/metadata supports a single "make" filter per request;
+        # we issue one request per make and merge results)
+        make_queries: List[Optional[str]] = list(allow_makes) if allow_makes else [None]
+
         self._logger.info("Immich indexing started. URL=%s", self._base_url)
         with httpx.Client(timeout=60.0) as client:
-            while True:
-                response = client.get(
-                    f"{self._base_url}/api/assets",
-                    params={"page": page, "size": size},
-                    headers=headers,
-                )
-                response.raise_for_status()
-                assets = response.json()
-                if not isinstance(assets, list):
-                    raise RuntimeError("Unexpected Immich /api/assets response format")
-                if not assets:
-                    break
+            for make_filter in make_queries:
+                page = 1
+                while True:
+                    body: dict = {"page": page, "size": size, "type": "IMAGE", "withExif": True}
+                    if make_filter:
+                        body["make"] = make_filter
 
-                for asset in assets:
-                    if not isinstance(asset, dict):
-                        continue
-                    fetched_count += 1
-                    if fetched_count % 1000 == 0:
-                        self._logger.info("Fetched %d assets from Immich...", fetched_count)
-                    if self._on_progress and fetched_count % 500 == 0:
-                        self._on_progress(fetched_count, fetched_count, matched_count)
-
-                    if (asset.get("type") or "").upper() != "IMAGE":
-                        continue
-
-                    asset_id = str(asset.get("id") or "").strip()
-                    if not asset_id:
-                        continue
-
-                    exif = asset.get("exifInfo") or {}
-                    if not isinstance(exif, dict):
-                        exif = {}
-
-                    date_value = exif.get("dateTimeOriginal") or asset.get("fileCreatedAt")
-                    date = _parse_iso_datetime(date_value)
-                    if date is None:
-                        continue
-
-                    camera_make = str(exif.get("make") or "").strip()
-                    camera_model = str(exif.get("model") or "").strip()
-
-                    if allow_makes and not _matches_allowlist(camera_make, allow_makes):
-                        continue
-                    if allow_models and not _matches_allowlist(camera_model, allow_models):
-                        continue
-
-                    records.append(
-                        PhotoRecord(
-                            uuid=asset_id,
-                            date=date,
-                            path="",
-                            camera_make=camera_make,
-                            camera_model=camera_model,
-                            source_url=f"{self._base_url}/api/assets/{asset_id}/original",
-                        )
+                    response = client.post(
+                        f"{self._base_url}/api/search/metadata",
+                        headers=headers,
+                        json=body,
                     )
-                    matched_count += 1
+                    response.raise_for_status()
+                    data = response.json()
+                    assets = data.get("assets", {}).get("items", [])
+                    if not assets:
+                        break
 
-                if len(assets) < size:
-                    break
-                page += 1
+                    for asset in assets:
+                        if not isinstance(asset, dict):
+                            continue
+                        fetched_count += 1
+                        if fetched_count % 1000 == 0:
+                            self._logger.info("Fetched %d assets from Immich...", fetched_count)
+                        if self._on_progress and fetched_count % 500 == 0:
+                            self._on_progress(fetched_count, fetched_count, matched_count)
+
+                        asset_id = str(asset.get("id") or "").strip()
+                        if not asset_id:
+                            continue
+
+                        date_value = asset.get("fileCreatedAt")
+                        date = _parse_iso_datetime(date_value)
+                        if date is None:
+                            continue
+
+                        # Parse make/model from originalPath: .../admin/{make}/{model}/lens/file.jpg
+                        camera_make, camera_model = _parse_make_model_from_path(
+                            asset.get("originalPath") or ""
+                        )
+
+                        if allow_models and not _matches_allowlist(camera_model, allow_models):
+                            continue
+
+                        records.append(
+                            PhotoRecord(
+                                uuid=asset_id,
+                                date=date,
+                                path="",
+                                camera_make=camera_make,
+                                camera_model=camera_model,
+                                source_url=f"{self._base_url}/api/assets/{asset_id}/original",
+                            )
+                        )
+                        matched_count += 1
+
+                    if len(assets) < size:
+                        break
+                    page += 1
 
         self.total_assets = fetched_count
         self.scanned_assets = fetched_count
@@ -474,6 +480,25 @@ def _resolve_photo_path(photo) -> Optional[str]:
             if os.path.exists(candidate):
                 return candidate
     return None
+
+
+def _parse_make_model_from_path(path: str) -> tuple:
+    """Extract camera make and model from Immich originalPath.
+
+    Immich stores files as: /data/library/{user}/{make}/{model}/{lens}/{filename}
+    Returns (make, model) strings, empty strings if not parseable.
+    """
+    parts = path.replace("\\", "/").split("/")
+    # Find the user segment — everything after 'library/' or 'upload/'
+    for marker in ("library", "upload"):
+        try:
+            idx = parts.index(marker)
+            # parts[idx+1] = user, parts[idx+2] = make, parts[idx+3] = model
+            if len(parts) > idx + 3:
+                return parts[idx + 2], parts[idx + 3]
+        except ValueError:
+            continue
+    return "", ""
 
 
 def _parse_iso_datetime(value: object) -> Optional[datetime]:
