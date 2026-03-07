@@ -1,12 +1,14 @@
 import logging
 import os
 import random
+import tempfile
 import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
+import httpx
 from PIL import Image, ImageOps
 
 from .config import AppConfig
@@ -25,65 +27,39 @@ class PhotoRecord:
     path: str
     camera_make: str
     camera_model: str
+    source_url: Optional[str] = None
 
 
-class LibraryIndex:
-    def __init__(self, config: AppConfig):
-        if config.selection_mode not in {"shuffle", "random"}:
-            config.selection_mode = "shuffle"
+class ApplePhotosSource:
+    def __init__(
+        self,
+        config: AppConfig,
+        logger: logging.Logger,
+        on_progress: Optional[Callable[[int, int, int], None]] = None,
+    ):
         self._config = config
-        self._lock = threading.Lock()
-        self._photos_by_uuid: Dict[str, PhotoRecord] = {}
-        self._sessions: List[List[str]] = []
-        self._last_indexed: Optional[datetime] = None
-        self._missing_paths: int = 0
-        self._session_order: List[int] = []
-        self._last_session: Optional[int] = None
-        self._history: List[Tuple[int, str]] = []
-        self._history_index: int = -1
-        self._history_limit: int = 500
-        self._scan_total: int = 0
-        self._scan_count: int = 0
-        self._matched_count: int = 0
+        self._logger = logger
+        self._on_progress = on_progress
+        self.total_assets: int = 0
+        self.scanned_assets: int = 0
+        self.matched_assets: int = 0
+        self.missing_paths: int = 0
 
-        if config.random_seed is not None:
-            random.seed(config.random_seed)
-
-        self._logger = logging.getLogger("fuji_frame")
-
-    @property
-    def stats(self) -> Dict[str, object]:
-        with self._lock:
-            return {
-                "photos": len(self._photos_by_uuid),
-                "sessions": len(self._sessions),
-                "last_indexed": self._last_indexed.isoformat() if self._last_indexed else None,
-                "missing_paths": self._missing_paths,
-                "scanned": self._scan_count,
-                "total": self._scan_total,
-                "matched": self._matched_count,
-            }
-
-    def rebuild(self) -> None:
+    def fetch_records(self) -> List[PhotoRecord]:
         if osxphotos is None:
             raise RuntimeError(
                 "osxphotos is not available: {}".format(_OSXPHOTOS_IMPORT_ERROR)
             )
 
-        start = time.time()
         photos_db = osxphotos.PhotosDB()
         photos = photos_db.photos()
         total = len(photos)
+        self.total_assets = total
         self._logger.info(
             "Indexing started. Library=%s TotalPhotos=%d",
             getattr(photos_db, "library_path", "unknown"),
             total,
         )
-
-        with self._lock:
-            self._scan_total = total
-            self._scan_count = 0
-            self._matched_count = 0
 
         allow_makes = {m.upper() for m in self._config.camera_make_allowlist if m}
         allow_models = {m.upper() for m in self._config.camera_model_allowlist if m}
@@ -134,14 +110,179 @@ class LibraryIndex:
             matched_count += 1
             if idx % 2000 == 0:
                 self._logger.info("Scanned %d/%d photos...", idx, total)
-            if idx % 500 == 0:
-                with self._lock:
-                    self._scan_count = idx
-                    self._matched_count = matched_count
+            if idx % 500 == 0 and self._on_progress:
+                self._on_progress(total, idx, matched_count)
+
+        self.scanned_assets = total
+        self.matched_assets = matched_count
+        self.missing_paths = missing_paths
+        if self._on_progress:
+            self._on_progress(total, total, matched_count)
+        return records
+
+
+class ImmichSource:
+    def __init__(
+        self,
+        config: AppConfig,
+        logger: logging.Logger,
+        on_progress: Optional[Callable[[int, int, int], None]] = None,
+    ):
+        self._config = config
+        self._logger = logger
+        self._on_progress = on_progress
+        self.total_assets: int = 0
+        self.scanned_assets: int = 0
+        self.matched_assets: int = 0
+        self.missing_paths: int = 0
+        self._base_url = (config.immich_url or "").rstrip("/")
+
+    def fetch_records(self) -> List[PhotoRecord]:
+        if not self._base_url:
+            raise RuntimeError("immich_url is required when source=immich")
+        if not self._config.immich_api_key:
+            raise RuntimeError("immich_api_key is required when source=immich")
+
+        allow_makes = {m.upper() for m in self._config.camera_make_allowlist if m}
+        allow_models = {m.upper() for m in self._config.camera_model_allowlist if m}
+
+        headers = {"x-api-key": self._config.immich_api_key}
+        page = 1
+        size = 1000
+        fetched_count = 0
+        matched_count = 0
+        records: List[PhotoRecord] = []
+
+        self._logger.info("Immich indexing started. URL=%s", self._base_url)
+        with httpx.Client(timeout=60.0) as client:
+            while True:
+                response = client.get(
+                    f"{self._base_url}/api/assets",
+                    params={"page": page, "size": size},
+                    headers=headers,
+                )
+                response.raise_for_status()
+                assets = response.json()
+                if not isinstance(assets, list):
+                    raise RuntimeError("Unexpected Immich /api/assets response format")
+                if not assets:
+                    break
+
+                for asset in assets:
+                    if not isinstance(asset, dict):
+                        continue
+                    fetched_count += 1
+                    if fetched_count % 1000 == 0:
+                        self._logger.info("Fetched %d assets from Immich...", fetched_count)
+                    if self._on_progress and fetched_count % 500 == 0:
+                        self._on_progress(fetched_count, fetched_count, matched_count)
+
+                    if (asset.get("type") or "").upper() != "IMAGE":
+                        continue
+
+                    asset_id = str(asset.get("id") or "").strip()
+                    if not asset_id:
+                        continue
+
+                    exif = asset.get("exifInfo") or {}
+                    if not isinstance(exif, dict):
+                        exif = {}
+
+                    date_value = exif.get("dateTimeOriginal") or asset.get("fileCreatedAt")
+                    date = _parse_iso_datetime(date_value)
+                    if date is None:
+                        continue
+
+                    camera_make = str(exif.get("make") or "").strip()
+                    camera_model = str(exif.get("model") or "").strip()
+
+                    if allow_makes and not _matches_allowlist(camera_make, allow_makes):
+                        continue
+                    if allow_models and not _matches_allowlist(camera_model, allow_models):
+                        continue
+
+                    records.append(
+                        PhotoRecord(
+                            uuid=asset_id,
+                            date=date,
+                            path="",
+                            camera_make=camera_make,
+                            camera_model=camera_model,
+                            source_url=f"{self._base_url}/api/assets/{asset_id}/original",
+                        )
+                    )
+                    matched_count += 1
+
+                if len(assets) < size:
+                    break
+                page += 1
+
+        self.total_assets = fetched_count
+        self.scanned_assets = fetched_count
+        self.matched_assets = matched_count
+        if self._on_progress:
+            self._on_progress(fetched_count, fetched_count, matched_count)
+        return records
+
+
+class LibraryIndex:
+    def __init__(self, config: AppConfig):
+        if config.selection_mode not in {"shuffle", "random"}:
+            config.selection_mode = "shuffle"
+        self._config = config
+        self._lock = threading.Lock()
+        self._photos_by_uuid: Dict[str, PhotoRecord] = {}
+        self._sessions: List[List[str]] = []
+        self._last_indexed: Optional[datetime] = None
+        self._missing_paths: int = 0
+        self._session_order: List[int] = []
+        self._last_session: Optional[int] = None
+        self._history: List[Tuple[int, str]] = []
+        self._history_index: int = -1
+        self._history_limit: int = 500
+        self._scan_total: int = 0
+        self._scan_count: int = 0
+        self._matched_count: int = 0
+
+        if config.random_seed is not None:
+            random.seed(config.random_seed)
+
+        self._logger = logging.getLogger("fuji_frame")
+
+    @property
+    def stats(self) -> Dict[str, object]:
+        with self._lock:
+            return {
+                "photos": len(self._photos_by_uuid),
+                "sessions": len(self._sessions),
+                "last_indexed": self._last_indexed.isoformat() if self._last_indexed else None,
+                "missing_paths": self._missing_paths,
+                "scanned": self._scan_count,
+                "total": self._scan_total,
+                "matched": self._matched_count,
+            }
+
+    def rebuild(self) -> None:
+        start = time.time()
+        with self._lock:
+            self._scan_total = 0
+            self._scan_count = 0
+            self._matched_count = 0
+
+        if self._config.source == "immich":
+            source = ImmichSource(self._config, self._logger, self._set_scan_progress)
+        else:
+            source = ApplePhotosSource(self._config, self._logger, self._set_scan_progress)
+
+        records = source.fetch_records()
 
         records.sort(key=lambda r: r.date)
         sessions = _build_sessions(records, self._config.session_gap_minutes)
 
+        missing_paths = source.missing_paths
+        total = source.total_assets
+        scanned = source.scanned_assets
+        matched_count = source.matched_assets
         with self._lock:
             self._photos_by_uuid = {r.uuid: r for r in records}
             self._sessions = [[r.uuid for r in session] for session in sessions]
@@ -151,7 +292,8 @@ class LibraryIndex:
             self._last_session = None
             self._history = []
             self._history_index = -1
-            self._scan_count = total
+            self._scan_total = total
+            self._scan_count = scanned
             self._matched_count = matched_count
 
         self._logger.info(
@@ -228,6 +370,12 @@ class LibraryIndex:
             return None
         return session_index, record
 
+    def _set_scan_progress(self, total: int, scanned: int, matched: int) -> None:
+        with self._lock:
+            self._scan_total = total
+            self._scan_count = scanned
+            self._matched_count = matched
+
     def ensure_cached(self, record: PhotoRecord, max_width: int, max_height: int, quality: int) -> str:
         cache_dir = self._config.cache_dir_expanded
         os.makedirs(cache_dir, exist_ok=True)
@@ -237,10 +385,41 @@ class LibraryIndex:
         if os.path.exists(cache_path):
             return cache_path
 
-        image = Image.open(record.path)
-        image = ImageOps.exif_transpose(image)
-        image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-        image.save(cache_path, "JPEG", quality=quality, optimize=True)
+        source_path = record.path
+        downloaded_tmp_path: Optional[str] = None
+        tmp_cache_path = f"{cache_path}.tmp"
+        if record.source_url:
+            if not self._config.immich_api_key:
+                raise RuntimeError("immich_api_key is required for remote sources")
+            with tempfile.NamedTemporaryFile(dir=cache_dir, suffix=".img", delete=False) as tmp_file:
+                downloaded_tmp_path = tmp_file.name
+            with httpx.Client(timeout=120.0) as client:
+                with client.stream(
+                    "GET",
+                    record.source_url,
+                    headers={"x-api-key": self._config.immich_api_key},
+                ) as response:
+                    response.raise_for_status()
+                    with open(downloaded_tmp_path, "wb") as out_file:
+                        for chunk in response.iter_bytes():
+                            if chunk:
+                                out_file.write(chunk)
+            source_path = downloaded_tmp_path
+
+        if not source_path:
+            raise RuntimeError("Photo source is missing")
+
+        try:
+            with Image.open(source_path) as image:
+                image = ImageOps.exif_transpose(image)
+                image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                image.save(tmp_cache_path, "JPEG", quality=quality, optimize=True)
+            os.replace(tmp_cache_path, cache_path)
+        finally:
+            if os.path.exists(tmp_cache_path):
+                os.remove(tmp_cache_path)
+            if downloaded_tmp_path and os.path.exists(downloaded_tmp_path):
+                os.remove(downloaded_tmp_path)
         return cache_path
 
     def get_record(self, photo_id: str) -> Optional[PhotoRecord]:
@@ -295,6 +474,20 @@ def _resolve_photo_path(photo) -> Optional[str]:
             if os.path.exists(candidate):
                 return candidate
     return None
+
+
+def _parse_iso_datetime(value: object) -> Optional[datetime]:
+    if not isinstance(value, str):
+        return None
+    parsed = value.strip()
+    if not parsed:
+        return None
+    if parsed.endswith("Z"):
+        parsed = f"{parsed[:-1]}+00:00"
+    try:
+        return datetime.fromisoformat(parsed)
+    except ValueError:
+        return None
 
 
 class IndexRefresher(threading.Thread):

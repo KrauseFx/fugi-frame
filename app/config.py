@@ -14,6 +14,9 @@ def _expand(path: str) -> str:
 class AppConfig:
     bind: str = "0.0.0.0"
     port: int = 8765
+    source: str = "apple_photos"  # "apple_photos" or "immich"
+    immich_url: str = "http://localhost:2283"
+    immich_api_key: str = ""
     camera_make_allowlist: List[str] = field(default_factory=lambda: ["FUJIFILM"])
     camera_model_allowlist: List[str] = field(default_factory=list)
     session_gap_minutes: int = 10
@@ -44,6 +47,9 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         config = AppConfig(
             bind=data.get("bind", defaults.bind),
             port=int(data.get("port", defaults.port)),
+            source=data.get("source", defaults.source),
+            immich_url=data.get("immich_url", defaults.immich_url),
+            immich_api_key=data.get("immich_api_key", defaults.immich_api_key),
             camera_make_allowlist=data.get("camera_make_allowlist", defaults.camera_make_allowlist),
             camera_model_allowlist=data.get("camera_model_allowlist", defaults.camera_model_allowlist),
             session_gap_minutes=int(data.get("session_gap_minutes", defaults.session_gap_minutes)),
@@ -70,10 +76,19 @@ def load_config(path: Optional[str] = None) -> AppConfig:
 
     env_makes = _parse_env_list("FUJI_FRAME_CAMERA_MAKE")
     env_models = _parse_env_list("FUJI_FRAME_CAMERA_MODEL")
+    env_source = os.environ.get("FUJI_FRAME_SOURCE")
+    env_immich_url = os.environ.get("FUJI_FRAME_IMMICH_URL")
+    env_immich_api_key = os.environ.get("FUJI_FRAME_IMMICH_API_KEY")
     if env_makes is not None:
         config.camera_make_allowlist = env_makes
     if env_models is not None:
         config.camera_model_allowlist = env_models
+    if env_source is not None:
+        config.source = env_source
+    if env_immich_url is not None:
+        config.immich_url = env_immich_url
+    if env_immich_api_key is not None:
+        config.immich_api_key = env_immich_api_key
 
     return config
 

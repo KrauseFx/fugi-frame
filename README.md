@@ -60,6 +60,13 @@ Edit `config.json`:
 - `fit_mode`: `cover` (default) or `contain`.
 - `max_image_width` / `max_image_height`: cached image size.
 
+## Sources
+- `source: "apple_photos"`: uses the local Apple Photos library via `osxphotos` (macOS only).
+- `source: "immich"`: uses the Immich API and requires:
+  - `immich_url`: base URL (for example `http://localhost:2283`, without trailing slash)
+  - `immich_api_key`: API key sent via `x-api-key`
+- Both sources apply `camera_make_allowlist` and `camera_model_allowlist`.
+
 ### Camera filter
 By default, the app only indexes photos whose camera make matches `FUJIFILM`.
 To customize:
