@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import AppConfig, load_config
+from .frameo_output import run_frameo
 from .indexer import IndexRefresher, LibraryIndex
 
 
@@ -18,7 +19,7 @@ def _build_app(config: AppConfig) -> FastAPI:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
-    logger = logging.getLogger("fuji_frame")
+    logger = logging.getLogger("fugi_frame")
     app = FastAPI(title="Fugi Frame")
 
     index = LibraryIndex(config)
@@ -125,7 +126,7 @@ def _build_app(config: AppConfig) -> FastAPI:
         width = w or config.max_image_width
         height = h or config.max_image_height
         try:
-            path = index.ensure_cached(record, width, height, config.jpeg_quality)
+            path = index.ensure_cached(record, width, height, config.jpeg_quality, fit_mode=config.fit_mode)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
         return FileResponse(path, media_type="image/jpeg")
@@ -138,16 +139,25 @@ def _build_app(config: AppConfig) -> FastAPI:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fugi Frame server")
+    parser = argparse.ArgumentParser(description="Fugi Frame")
     parser.add_argument(
         "--config",
         dest="config_path",
         default=None,
         help="Path to config.json (default: ./config.json)",
     )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="For frameo output mode, send one photo and exit.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config_path)
+    if config.output_mode == "frameo":
+        run_frameo(config, once=args.once)
+        return
+
     app = _build_app(config)
 
     import uvicorn

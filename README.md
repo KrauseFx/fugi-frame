@@ -76,7 +76,7 @@ To customize:
   - `camera_model_allowlist`: optional narrower filter, e.g. `["X-T5"]`
 - Or override via env vars (comma-separated):
   ```
-  FUJI_FRAME_CAMERA_MAKE=CANON,SONY FUJI_FRAME_CAMERA_MODEL=R5 python3 -m app.main --config config.json
+  FUGI_FRAME_CAMERA_MAKE=CANON,SONY FUGI_FRAME_CAMERA_MODEL=R5 python3 -m app.main --config config.json
   ```
 
 ## Randomization logic

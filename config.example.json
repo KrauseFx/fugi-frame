@@ -1,6 +1,7 @@
 {
   "bind": "0.0.0.0",
   "port": 8765,
+  "output_mode": "web",
   "source": "apple_photos",
   "immich_url": "http://localhost:2283",
   "immich_api_key": "",
@@ -15,7 +16,18 @@
   "max_image_width": 1920,
   "max_image_height": 1080,
   "jpeg_quality": 85,
-  "cache_dir": "~/.fuji-frame/cache",
+  "cache_dir": "~/.fugi-frame/cache",
   "index_refresh_minutes": 60,
-  "random_seed": null
+  "random_seed": null,
+  "frameo_device_host": "",
+  "frameo_device_port": 5555,
+  "frameo_device_serial": "",
+  "frameo_adb_path": "adb",
+  "frameo_remote_path": "/storage/self/primary/DCIM/fugi-current.jpg",
+  "frameo_target_width": 2000,
+  "frameo_target_height": 1200,
+  "frameo_fit_mode": "cover",
+  "frameo_jpeg_quality": 85,
+  "frameo_send_interval_seconds": 120,
+  "frameo_delete_all_images_before_push": false
 }

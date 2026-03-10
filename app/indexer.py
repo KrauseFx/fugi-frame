@@ -253,7 +253,7 @@ class LibraryIndex:
         if config.random_seed is not None:
             random.seed(config.random_seed)
 
-        self._logger = logging.getLogger("fuji_frame")
+        self._logger = logging.getLogger("fugi_frame")
 
     @property
     def stats(self) -> Dict[str, object]:
@@ -382,11 +382,18 @@ class LibraryIndex:
             self._scan_count = scanned
             self._matched_count = matched
 
-    def ensure_cached(self, record: PhotoRecord, max_width: int, max_height: int, quality: int) -> str:
+    def ensure_cached(
+        self,
+        record: PhotoRecord,
+        max_width: int,
+        max_height: int,
+        quality: int,
+        fit_mode: str = "contain",
+    ) -> str:
         cache_dir = self._config.cache_dir_expanded
         os.makedirs(cache_dir, exist_ok=True)
 
-        cache_name = f"{record.uuid}_{max_width}x{max_height}.jpg"
+        cache_name = f"{record.uuid}_{max_width}x{max_height}_{fit_mode}.jpg"
         cache_path = os.path.join(cache_dir, cache_name)
         if os.path.exists(cache_path):
             return cache_path
@@ -418,8 +425,8 @@ class LibraryIndex:
         try:
             with Image.open(source_path) as image:
                 image = ImageOps.exif_transpose(image)
-                image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-                image.save(tmp_cache_path, "JPEG", quality=quality, optimize=True)
+                output = _render_image(image, max_width, max_height, fit_mode)
+                output.save(tmp_cache_path, "JPEG", quality=quality, optimize=True)
             os.replace(tmp_cache_path, cache_path)
         finally:
             if os.path.exists(tmp_cache_path):
@@ -513,6 +520,16 @@ def _parse_iso_datetime(value: object) -> Optional[datetime]:
         return datetime.fromisoformat(parsed)
     except ValueError:
         return None
+
+
+def _render_image(image: Image.Image, width: int, height: int, fit_mode: str) -> Image.Image:
+    source = image.convert("RGB")
+    if fit_mode == "cover":
+        return ImageOps.fit(source, (width, height), Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+
+    rendered = source.copy()
+    rendered.thumbnail((width, height), Image.Resampling.LANCZOS)
+    return rendered
 
 
 class IndexRefresher(threading.Thread):
