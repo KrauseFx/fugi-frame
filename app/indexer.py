@@ -28,6 +28,7 @@ class PhotoRecord:
     camera_make: str
     camera_model: str
     source_url: Optional[str] = None
+    people: Tuple[str, ...] = ()
 
 
 class ApplePhotosSource:
@@ -145,6 +146,7 @@ class ImmichSource:
 
         allow_makes = {m.upper() for m in self._config.camera_make_allowlist if m}
         allow_models = {m.upper() for m in self._config.camera_model_allowlist if m}
+        people_filter_enabled = bool(self._config.immich_person_allowlist)
 
         headers = {
             "x-api-key": self._config.immich_api_key,
@@ -167,6 +169,8 @@ class ImmichSource:
                 page = 1
                 while True:
                     body: dict = {"page": page, "size": size, "type": "IMAGE", "withExif": True}
+                    if people_filter_enabled:
+                        body["withPeople"] = True
                     if make_filter:
                         body["make"] = make_filter
 
@@ -195,6 +199,13 @@ class ImmichSource:
                         if not _is_visible_immich_asset(asset):
                             continue
 
+                        if people_filter_enabled and not _matches_immich_people_filter(
+                            asset,
+                            self._config.immich_person_allowlist,
+                            self._config.immich_person_match_mode,
+                        ):
+                            continue
+
                         asset_id = str(asset.get("id") or "").strip()
                         if not asset_id:
                             continue
@@ -220,6 +231,7 @@ class ImmichSource:
                                 camera_make=camera_make,
                                 camera_model=camera_model,
                                 source_url=f"{self._base_url}/api/assets/{asset_id}/original",
+                                people=_immich_person_ids(asset),
                             )
                         )
                         matched_count += 1
@@ -501,6 +513,55 @@ def _is_visible_immich_asset(asset: dict) -> bool:
     if asset.get("isArchived") or asset.get("isTrashed"):
         return False
     return True
+
+
+def _matches_immich_people_filter(asset: dict, allowlist: List[str], match_mode: str) -> bool:
+    required = _normalize_people_filter_values(allowlist)
+    if not required:
+        return True
+
+    people_keys = _immich_person_filter_keys(asset)
+    if match_mode == "all":
+        return required.issubset(people_keys)
+    return bool(required.intersection(people_keys))
+
+
+def _normalize_people_filter_values(values: List[str]) -> set:
+    return {str(value).strip().lower() for value in values if str(value).strip()}
+
+
+def _visible_immich_people(asset: dict) -> List[dict]:
+    people = asset.get("people")
+    if not isinstance(people, list):
+        return []
+
+    visible_people = []
+    for person in people:
+        if not isinstance(person, dict):
+            continue
+        if person.get("isHidden"):
+            continue
+        visible_people.append(person)
+    return visible_people
+
+
+def _immich_person_filter_keys(asset: dict) -> set:
+    keys = set()
+    for person in _visible_immich_people(asset):
+        for field in ("id", "name"):
+            value = str(person.get(field) or "").strip().lower()
+            if value:
+                keys.add(value)
+    return keys
+
+
+def _immich_person_ids(asset: dict) -> Tuple[str, ...]:
+    ids = []
+    for person in _visible_immich_people(asset):
+        person_id = str(person.get("id") or "").strip()
+        if person_id:
+            ids.append(person_id)
+    return tuple(ids)
 
 
 def _parse_make_model_from_path(path: str) -> tuple:
