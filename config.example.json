@@ -7,6 +7,7 @@
   "immich_api_key": "",
   "immich_person_allowlist": [],
   "immich_person_match_mode": "any",
+  "orientation_allowlist": [],
   "camera_make_allowlist": ["FUJIFILM"],
   "camera_model_allowlist": [],
   "session_gap_minutes": 10,
