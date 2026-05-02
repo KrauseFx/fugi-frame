@@ -20,6 +20,7 @@ class AppConfig:
     immich_api_key: str = ""
     immich_person_allowlist: List[str] = field(default_factory=list)
     immich_person_match_mode: str = "any"  # "any" or "all"
+    orientation_allowlist: List[str] = field(default_factory=list)  # landscape, portrait, square
     camera_make_allowlist: List[str] = field(default_factory=lambda: ["FUJIFILM"])
     camera_model_allowlist: List[str] = field(default_factory=list)
     session_gap_minutes: int = 10
@@ -70,6 +71,9 @@ def load_config(path: Optional[str] = None) -> AppConfig:
             ),
             immich_person_match_mode=_normalize_match_mode(
                 data.get("immich_person_match_mode", defaults.immich_person_match_mode)
+            ),
+            orientation_allowlist=_normalize_orientation_allowlist(
+                data.get("orientation_allowlist", defaults.orientation_allowlist)
             ),
             camera_make_allowlist=data.get("camera_make_allowlist", defaults.camera_make_allowlist),
             camera_model_allowlist=data.get("camera_model_allowlist", defaults.camera_model_allowlist),
@@ -124,6 +128,9 @@ def load_config(path: Optional[str] = None) -> AppConfig:
     env_immich_person_match_mode = _get_env(
         "FUGI_FRAME_IMMICH_PERSON_MATCH_MODE", "FUJI_FRAME_IMMICH_PERSON_MATCH_MODE"
     )
+    env_orientation_allowlist = _parse_env_list(
+        "FUGI_FRAME_ORIENTATION_ALLOWLIST", "FUJI_FRAME_ORIENTATION_ALLOWLIST"
+    )
     env_output_mode = _get_env("FUGI_FRAME_OUTPUT_MODE", "FUJI_FRAME_OUTPUT_MODE")
     env_frameo_device_host = _get_env(
         "FUGI_FRAME_FRAMEO_DEVICE_HOST", "FUJI_FRAME_FRAMEO_DEVICE_HOST"
@@ -172,6 +179,8 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         config.immich_person_allowlist = env_immich_person_allowlist
     if env_immich_person_match_mode is not None:
         config.immich_person_match_mode = _normalize_match_mode(env_immich_person_match_mode)
+    if env_orientation_allowlist is not None:
+        config.orientation_allowlist = _normalize_orientation_allowlist(env_orientation_allowlist)
     if env_frameo_device_host is not None:
         config.frameo_device_host = env_frameo_device_host
     if env_frameo_device_port is not None:
@@ -202,6 +211,25 @@ def _normalize_match_mode(value: object) -> str:
     normalized = str(value or "any").strip().lower()
     if normalized not in {"any", "all"}:
         return "any"
+    return normalized
+
+
+def _normalize_orientation_allowlist(value: object) -> List[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw_values = [value]
+    else:
+        try:
+            raw_values = list(value)  # type: ignore[arg-type]
+        except TypeError:
+            raw_values = []
+    allowed = {"landscape", "portrait", "square"}
+    normalized = []
+    for item in raw_values:
+        orientation = str(item or "").strip().lower()
+        if orientation in allowed and orientation not in normalized:
+            normalized.append(orientation)
     return normalized
 
 

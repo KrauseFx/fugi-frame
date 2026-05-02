@@ -66,6 +66,9 @@ Edit `config.json`:
   - `immich_url`: base URL (for example `http://localhost:2283`, without trailing slash)
   - `immich_api_key`: API key sent via `x-api-key`
 - Both sources apply `camera_make_allowlist` and `camera_model_allowlist`.
+- Both sources can filter by effective image orientation after EXIF rotation:
+  - `orientation_allowlist`: optional list containing `landscape`, `portrait`, and/or `square`.
+  - Use `["landscape"]` for wide displays to avoid portrait photos being heavily center-cropped.
 - Immich can also filter by people metadata:
   - `immich_person_allowlist`: optional Immich person IDs or exact person names.
   - `immich_person_match_mode`: `any` (default, at least one allowed person appears) or `all` (every allowed person appears).
@@ -87,6 +90,22 @@ You can also override via env vars:
 
 ```
 FUGI_FRAME_IMMICH_PERSON_ALLOWLIST=person-id-sophie,person-id-felix FUGI_FRAME_IMMICH_PERSON_MATCH_MODE=any python3 -m app.main --config config.json
+```
+
+### Orientation filter
+For landscape-only displays, set:
+
+```json
+{
+  "orientation_allowlist": ["landscape"]
+}
+```
+
+The filter uses effective orientation after EXIF rotation, so camera files stored as raw landscape dimensions with rotation metadata can still be correctly classified as portrait.
+You can also override via env vars:
+
+```
+FUGI_FRAME_ORIENTATION_ALLOWLIST=landscape python3 -m app.main --config config.json
 ```
 
 ### Camera filter

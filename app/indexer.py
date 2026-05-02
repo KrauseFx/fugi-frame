@@ -98,6 +98,8 @@ class ApplePhotosSource:
             if not path:
                 missing_paths += 1
                 continue
+            if not _matches_local_photo_orientation(photo, path, self._config.orientation_allowlist):
+                continue
 
             records.append(
                 PhotoRecord(
@@ -197,6 +199,12 @@ class ImmichSource:
                         # Defense-in-depth: Immich's search API currently only returns timeline
                         # assets by default, but never index locked/hidden assets if that changes.
                         if not _is_visible_immich_asset(asset):
+                            continue
+
+                        if not _matches_immich_orientation_filter(
+                            asset,
+                            self._config.orientation_allowlist,
+                        ):
                             continue
 
                         if people_filter_enabled and not _matches_immich_people_filter(
@@ -484,6 +492,112 @@ def _matches_allowlist(value: str, allowlist: set) -> bool:
         return False
     upper = value.upper()
     return any(allowed in upper for allowed in allowlist)
+
+
+def _matches_local_photo_orientation(photo, path: str, allowlist: List[str]) -> bool:
+    required = _normalize_orientation_filter_values(allowlist)
+    if not required:
+        return True
+
+    width = _first_int_attr(photo, "width", "pixel_width")
+    height = _first_int_attr(photo, "height", "pixel_height")
+    orientation_value = _photo_exif_orientation(photo)
+    orientation = _orientation_from_dimensions(width, height, orientation_value)
+    if orientation is None and path:
+        try:
+            with Image.open(path) as image:
+                transposed = ImageOps.exif_transpose(image)
+                orientation = _orientation_from_dimensions(transposed.width, transposed.height, None)
+        except Exception:
+            orientation = None
+    return orientation in required if orientation else False
+
+
+def _matches_immich_orientation_filter(asset: dict, allowlist: List[str]) -> bool:
+    required = _normalize_orientation_filter_values(allowlist)
+    if not required:
+        return True
+
+    exif = asset.get("exifInfo")
+    if not isinstance(exif, dict):
+        exif = {}
+    width = _first_int_value(
+        exif.get("exifImageWidth"),
+        exif.get("imageWidth"),
+        asset.get("exifImageWidth"),
+        asset.get("imageWidth"),
+    )
+    height = _first_int_value(
+        exif.get("exifImageHeight"),
+        exif.get("imageHeight"),
+        asset.get("exifImageHeight"),
+        asset.get("imageHeight"),
+    )
+    orientation_value = exif.get("orientation") or asset.get("orientation")
+    orientation = _orientation_from_dimensions(width, height, orientation_value)
+    return orientation in required if orientation else False
+
+
+def _normalize_orientation_filter_values(values: List[str]) -> set:
+    allowed = {"landscape", "portrait", "square"}
+    return {
+        str(value).strip().lower()
+        for value in values
+        if str(value).strip().lower() in allowed
+    }
+
+
+def _orientation_from_dimensions(
+    width: Optional[int],
+    height: Optional[int],
+    exif_orientation: object,
+) -> Optional[str]:
+    if not width or not height or width <= 0 or height <= 0:
+        return None
+    if _parse_exif_orientation(exif_orientation) in {5, 6, 7, 8}:
+        width, height = height, width
+    if width > height:
+        return "landscape"
+    if height > width:
+        return "portrait"
+    return "square"
+
+
+def _photo_exif_orientation(photo) -> Optional[int]:
+    exif = getattr(photo, "exif_info", None)
+    if isinstance(exif, dict):
+        return _parse_exif_orientation(exif.get("Orientation") or exif.get("orientation"))
+    if exif is not None:
+        return _parse_exif_orientation(
+            getattr(exif, "orientation", None) or getattr(exif, "Orientation", None)
+        )
+    return _parse_exif_orientation(getattr(photo, "orientation", None))
+
+
+def _parse_exif_orientation(value: object) -> Optional[int]:
+    if value is None:
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_int_attr(obj, *names: str) -> Optional[int]:
+    return _first_int_value(*(getattr(obj, name, None) for name in names))
+
+
+def _first_int_value(*values: object) -> Optional[int]:
+    for value in values:
+        if value is None:
+            continue
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            return parsed
+    return None
 
 
 
