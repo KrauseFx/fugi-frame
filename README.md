@@ -130,6 +130,28 @@ The goal is to avoid oversampling large shoots while still keeping the display f
 - **Photo selection**: Once a session is chosen, a single photo is picked uniformly at random from that session.
 - **History**: The server keeps a short in-memory history so the UI can go back/forward with arrow keys.
 
+## Frameo control API
+For `output_mode: "frameo"`, you can enable a small authenticated local control API so home automation tools can trigger the physical frame without running ADB themselves:
+
+```json
+{
+  "frameo_control_enabled": true,
+  "frameo_control_bind": "0.0.0.0",
+  "frameo_control_port": 8767,
+  "frameo_control_token": "change-this-local-secret"
+}
+```
+
+Skip immediately:
+
+```bash
+curl -X POST \
+  -H "X-Fugi-Frame-Token: <control-token>" \
+  "http://<mac-ip>:8767/api/frameo/skip"
+```
+
+Homey can call that URL from a Flow when a Zigbee button is pressed. If your automation tool cannot send custom headers, the endpoint also accepts the same value as a query parameter named `token`. Keep the token in local ignored config or environment only; do not commit real tokens.
+
 ## Troubleshooting
 - **No photos**: confirm your Fujifilm EXIF make is `FUJIFILM`. If not, add your specific model in `camera_model_allowlist`.
 - **Missing originals**: ensure Photos is set to download originals to this Mac.
