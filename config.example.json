@@ -32,5 +32,9 @@
   "frameo_fit_mode": "cover",
   "frameo_jpeg_quality": 85,
   "frameo_send_interval_seconds": 120,
-  "frameo_delete_all_images_before_push": false
+  "frameo_delete_all_images_before_push": false,
+  "frameo_control_enabled": false,
+  "frameo_control_bind": "127.0.0.1",
+  "frameo_control_port": 8767,
+  "frameo_control_token": ""
 }

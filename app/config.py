@@ -46,6 +46,10 @@ class AppConfig:
     frameo_jpeg_quality: int = 85
     frameo_send_interval_seconds: int = 120
     frameo_delete_all_images_before_push: bool = False
+    frameo_control_enabled: bool = False
+    frameo_control_bind: str = "127.0.0.1"
+    frameo_control_port: int = 8767
+    frameo_control_token: str = ""
 
     @property
     def cache_dir_expanded(self) -> str:
@@ -113,6 +117,12 @@ def load_config(path: Optional[str] = None) -> AppConfig:
                     defaults.frameo_delete_all_images_before_push,
                 )
             ),
+            frameo_control_enabled=bool(
+                data.get("frameo_control_enabled", defaults.frameo_control_enabled)
+            ),
+            frameo_control_bind=data.get("frameo_control_bind", defaults.frameo_control_bind),
+            frameo_control_port=int(data.get("frameo_control_port", defaults.frameo_control_port)),
+            frameo_control_token=data.get("frameo_control_token", defaults.frameo_control_token),
         )
     else:
         config = defaults
@@ -163,6 +173,18 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         "FUGI_FRAME_FRAMEO_DELETE_ALL_IMAGES_BEFORE_PUSH",
         "FUJI_FRAME_FRAMEO_DELETE_ALL_IMAGES_BEFORE_PUSH",
     )
+    env_frameo_control_enabled = _parse_env_bool(
+        "FUGI_FRAME_FRAMEO_CONTROL_ENABLED", "FUJI_FRAME_FRAMEO_CONTROL_ENABLED"
+    )
+    env_frameo_control_bind = _get_env(
+        "FUGI_FRAME_FRAMEO_CONTROL_BIND", "FUJI_FRAME_FRAMEO_CONTROL_BIND"
+    )
+    env_frameo_control_port = _parse_env_int(
+        "FUGI_FRAME_FRAMEO_CONTROL_PORT", "FUJI_FRAME_FRAMEO_CONTROL_PORT"
+    )
+    env_frameo_control_token = _get_env(
+        "FUGI_FRAME_FRAMEO_CONTROL_TOKEN", "FUJI_FRAME_FRAMEO_CONTROL_TOKEN"
+    )
     if env_makes is not None:
         config.camera_make_allowlist = env_makes
     if env_models is not None:
@@ -203,6 +225,14 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         config.frameo_send_interval_seconds = env_frameo_send_interval_seconds
     if env_frameo_delete_all_images_before_push is not None:
         config.frameo_delete_all_images_before_push = env_frameo_delete_all_images_before_push
+    if env_frameo_control_enabled is not None:
+        config.frameo_control_enabled = env_frameo_control_enabled
+    if env_frameo_control_bind is not None:
+        config.frameo_control_bind = env_frameo_control_bind
+    if env_frameo_control_port is not None:
+        config.frameo_control_port = env_frameo_control_port
+    if env_frameo_control_token is not None:
+        config.frameo_control_token = env_frameo_control_token
 
     return config
 
