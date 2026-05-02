@@ -190,6 +190,11 @@ class ImmichSource:
                         if self._on_progress and fetched_count % 500 == 0:
                             self._on_progress(fetched_count, fetched_count, matched_count)
 
+                        # Defense-in-depth: Immich's search API currently only returns timeline
+                        # assets by default, but never index locked/hidden assets if that changes.
+                        if not _is_visible_immich_asset(asset):
+                            continue
+
                         asset_id = str(asset.get("id") or "").strip()
                         if not asset_id:
                             continue
@@ -487,6 +492,15 @@ def _resolve_photo_path(photo) -> Optional[str]:
             if os.path.exists(candidate):
                 return candidate
     return None
+
+
+def _is_visible_immich_asset(asset: dict) -> bool:
+    visibility = str(asset.get("visibility") or "").strip().lower()
+    if visibility and visibility != "timeline":
+        return False
+    if asset.get("isArchived") or asset.get("isTrashed"):
+        return False
+    return True
 
 
 def _parse_make_model_from_path(path: str) -> tuple:
