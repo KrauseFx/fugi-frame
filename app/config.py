@@ -18,6 +18,8 @@ class AppConfig:
     source: str = "apple_photos"  # "apple_photos" or "immich"
     immich_url: str = "http://localhost:2283"
     immich_api_key: str = ""
+    immich_person_allowlist: List[str] = field(default_factory=list)
+    immich_person_match_mode: str = "any"  # "any" or "all"
     camera_make_allowlist: List[str] = field(default_factory=lambda: ["FUJIFILM"])
     camera_model_allowlist: List[str] = field(default_factory=list)
     session_gap_minutes: int = 10
@@ -63,6 +65,12 @@ def load_config(path: Optional[str] = None) -> AppConfig:
             source=data.get("source", defaults.source),
             immich_url=data.get("immich_url", defaults.immich_url),
             immich_api_key=data.get("immich_api_key", defaults.immich_api_key),
+            immich_person_allowlist=data.get(
+                "immich_person_allowlist", defaults.immich_person_allowlist
+            ),
+            immich_person_match_mode=_normalize_match_mode(
+                data.get("immich_person_match_mode", defaults.immich_person_match_mode)
+            ),
             camera_make_allowlist=data.get("camera_make_allowlist", defaults.camera_make_allowlist),
             camera_model_allowlist=data.get("camera_model_allowlist", defaults.camera_model_allowlist),
             session_gap_minutes=int(data.get("session_gap_minutes", defaults.session_gap_minutes)),
@@ -110,6 +118,12 @@ def load_config(path: Optional[str] = None) -> AppConfig:
     env_source = _get_env("FUGI_FRAME_SOURCE", "FUJI_FRAME_SOURCE")
     env_immich_url = _get_env("FUGI_FRAME_IMMICH_URL", "FUJI_FRAME_IMMICH_URL")
     env_immich_api_key = _get_env("FUGI_FRAME_IMMICH_API_KEY", "FUJI_FRAME_IMMICH_API_KEY")
+    env_immich_person_allowlist = _parse_env_list(
+        "FUGI_FRAME_IMMICH_PERSON_ALLOWLIST", "FUJI_FRAME_IMMICH_PERSON_ALLOWLIST"
+    )
+    env_immich_person_match_mode = _get_env(
+        "FUGI_FRAME_IMMICH_PERSON_MATCH_MODE", "FUJI_FRAME_IMMICH_PERSON_MATCH_MODE"
+    )
     env_output_mode = _get_env("FUGI_FRAME_OUTPUT_MODE", "FUJI_FRAME_OUTPUT_MODE")
     env_frameo_device_host = _get_env(
         "FUGI_FRAME_FRAMEO_DEVICE_HOST", "FUJI_FRAME_FRAMEO_DEVICE_HOST"
@@ -154,6 +168,10 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         config.immich_url = env_immich_url
     if env_immich_api_key is not None:
         config.immich_api_key = env_immich_api_key
+    if env_immich_person_allowlist is not None:
+        config.immich_person_allowlist = env_immich_person_allowlist
+    if env_immich_person_match_mode is not None:
+        config.immich_person_match_mode = _normalize_match_mode(env_immich_person_match_mode)
     if env_frameo_device_host is not None:
         config.frameo_device_host = env_frameo_device_host
     if env_frameo_device_port is not None:
@@ -178,6 +196,13 @@ def load_config(path: Optional[str] = None) -> AppConfig:
         config.frameo_delete_all_images_before_push = env_frameo_delete_all_images_before_push
 
     return config
+
+
+def _normalize_match_mode(value: object) -> str:
+    normalized = str(value or "any").strip().lower()
+    if normalized not in {"any", "all"}:
+        return "any"
+    return normalized
 
 
 def _get_env(*keys: str) -> Optional[str]:

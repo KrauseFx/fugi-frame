@@ -5,6 +5,8 @@
   "source": "apple_photos",
   "immich_url": "http://localhost:2283",
   "immich_api_key": "",
+  "immich_person_allowlist": [],
+  "immich_person_match_mode": "any",
   "camera_make_allowlist": ["FUJIFILM"],
   "camera_model_allowlist": [],
   "session_gap_minutes": 10,

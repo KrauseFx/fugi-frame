@@ -66,6 +66,28 @@ Edit `config.json`:
   - `immich_url`: base URL (for example `http://localhost:2283`, without trailing slash)
   - `immich_api_key`: API key sent via `x-api-key`
 - Both sources apply `camera_make_allowlist` and `camera_model_allowlist`.
+- Immich can also filter by people metadata:
+  - `immich_person_allowlist`: optional Immich person IDs or exact person names.
+  - `immich_person_match_mode`: `any` (default, at least one allowed person appears) or `all` (every allowed person appears).
+  - Person IDs are safer than names because Immich person names can be empty until labeled.
+
+### People filter
+For Immich-only filtering, set:
+
+```json
+{
+  "source": "immich",
+  "immich_person_allowlist": ["person-id-sophie", "person-id-felix"],
+  "immich_person_match_mode": "any"
+}
+```
+
+Use `"any"` for photos containing Sophie or Felix or both; use `"all"` for photos containing both Sophie and Felix.
+You can also override via env vars:
+
+```
+FUGI_FRAME_IMMICH_PERSON_ALLOWLIST=person-id-sophie,person-id-felix FUGI_FRAME_IMMICH_PERSON_MATCH_MODE=any python3 -m app.main --config config.json
+```
 
 ### Camera filter
 By default, the app only indexes photos whose camera make matches `FUJIFILM`.
