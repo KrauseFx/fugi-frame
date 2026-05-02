@@ -1,9 +1,11 @@
 .venv/
+.venv-system/
 __pycache__/
 *.pyc
 .DS_Store
 config.json
 config.frameo.json
+FRAMEO_LOCAL.md
 cache/
 output.log
 server.log

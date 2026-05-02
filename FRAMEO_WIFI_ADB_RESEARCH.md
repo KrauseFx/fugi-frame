@@ -31,9 +31,10 @@ Sleep is not expected to matter because Frameo sleep only dims the display rathe
 2. Reboot the frame.
 3. Verify Wi-Fi ADB comes back automatically:
    ```bash
-   adb connect 192.168.4.26:5555
+   adb connect <frame-ip>:5555
    ```
-4. If that works, the cable should no longer be needed after reboot.
+4. Keep the real device IP in ignored local config/notes, not in the repo.
+5. If that works, the cable should no longer be needed after reboot.
 
 ## Notes
 
