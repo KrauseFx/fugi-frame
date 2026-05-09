@@ -1,0 +1,45 @@
+{
+  "name": {
+    "en": "Pexar / Frameo Frame"
+  },
+  "class": "other",
+  "platforms": ["local"],
+  "connectivity": ["lan"],
+  "images": {
+    "small": "/drivers/frame/assets/images/small.png",
+    "large": "/drivers/frame/assets/images/large.png"
+  },
+  "capabilities": ["onoff", "dim"],
+  "capabilitiesOptions": {
+    "onoff": {
+      "title": {
+        "en": "Display"
+      }
+    },
+    "dim": {
+      "title": {
+        "en": "Brightness"
+      },
+      "preventInsights": true
+    }
+  },
+  "pair": [
+    {
+      "id": "configure",
+      "navigation": {
+        "next": "list_devices"
+      }
+    },
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "next": "add_devices"
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; padding: 16px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 8px; margin-top: 4px; }
+    button { margin-top: 16px; padding: 8px 12px; }
+    .hint { color: #666; font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1 data-i18n="pair.title">Connect Fugi Frame</h1>
+  <label for="base_url">Fugi control URL</label>
+  <input id="base_url" type="text" placeholder="http://fugi-host:8767" />
+
+  <label for="token">Control token</label>
+  <input id="token" type="password" placeholder="frameo_control_token" />
+  <div class="hint">Token stays in Homey device settings; it is not committed into the app.</div>
+
+  <button id="connect">Test connection</button>
+
+  <script type="application/javascript">
+    document.getElementById('connect').addEventListener('click', async function () {
+      const base_url = document.getElementById('base_url').value.trim();
+      const token = document.getElementById('token').value;
+      try {
+        Homey.showLoadingOverlay();
+        await Homey.emit('test_connection', { base_url, token });
+        Homey.hideLoadingOverlay();
+        await Homey.nextView();
+      } catch (error) {
+        Homey.hideLoadingOverlay();
+        Homey.alert(error && error.message ? error.message : String(error));
+      }
+    });
+  </script>
+</body>
+</html>

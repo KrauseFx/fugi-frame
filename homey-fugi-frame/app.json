@@ -1,0 +1,131 @@
+{
+  "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
+  "id": "com.krausefx.fugiframe",
+  "version": "1.0.0",
+  "compatibility": ">=5.0.0",
+  "sdk": 3,
+  "platforms": [
+    "local"
+  ],
+  "brandColor": "#111827",
+  "name": {
+    "en": "Fugi Frame"
+  },
+  "description": {
+    "en": "Controls a local Fugi/Pexar Frameo digital photo frame."
+  },
+  "category": [
+    "tools"
+  ],
+  "tags": {
+    "en": [
+      "photo",
+      "frame",
+      "frameo",
+      "local"
+    ]
+  },
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png"
+  },
+  "author": {
+    "name": "Felix Krause"
+  },
+  "flow": {
+    "actions": [
+      {
+        "id": "skip_photo",
+        "title": {
+          "en": "Skip the current photo"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=frame"
+          }
+        ]
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": {
+        "en": "Pexar / Frameo Frame"
+      },
+      "class": "other",
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [
+        "lan"
+      ],
+      "images": {
+        "small": "/drivers/frame/assets/images/small.png",
+        "large": "/drivers/frame/assets/images/large.png"
+      },
+      "capabilities": [
+        "onoff",
+        "dim"
+      ],
+      "capabilitiesOptions": {
+        "onoff": {
+          "title": {
+            "en": "Display"
+          }
+        },
+        "dim": {
+          "title": {
+            "en": "Brightness"
+          },
+          "preventInsights": true
+        }
+      },
+      "pair": [
+        {
+          "id": "configure",
+          "navigation": {
+            "next": "list_devices"
+          }
+        },
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "frame",
+      "settings": [
+        {
+          "id": "base_url",
+          "type": "text",
+          "label": {
+            "en": "Fugi control URL"
+          },
+          "value": "",
+          "hint": {
+            "en": "Local URL of the Fugi Frame control API."
+          }
+        },
+        {
+          "id": "token",
+          "type": "password",
+          "label": {
+            "en": "Control token"
+          },
+          "value": "",
+          "hint": {
+            "en": "The frameo_control_token from config.frameo.json. Stored only in Homey device settings."
+          }
+        }
+      ]
+    }
+  ]
+}

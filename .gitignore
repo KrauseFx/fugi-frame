@@ -9,3 +9,5 @@ FRAMEO_LOCAL.md
 cache/
 output.log
 server.log
+homey-fugi-frame/node_modules/
+homey-fugi-frame/.homeybuild/

@@ -1,0 +1,14 @@
+{
+  "name": "homey-fugi-frame",
+  "version": "1.0.0",
+  "description": "Private Homey app for controlling Felix's Fugi/Pexar Frameo display.",
+  "main": "app.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "homey": "^4.2.1"
+  },
+  "private": true
+}

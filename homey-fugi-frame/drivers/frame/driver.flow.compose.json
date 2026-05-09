@@ -1,0 +1,10 @@
+{
+  "actions": [
+    {
+      "id": "skip_photo",
+      "title": {
+        "en": "Skip the current photo"
+      }
+    }
+  ]
+}

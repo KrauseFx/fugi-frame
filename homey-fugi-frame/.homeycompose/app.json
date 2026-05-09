@@ -1,0 +1,25 @@
+{
+  "id": "com.krausefx.fugiframe",
+  "version": "1.0.0",
+  "compatibility": ">=5.0.0",
+  "sdk": 3,
+  "platforms": ["local"],
+  "brandColor": "#111827",
+  "name": {
+    "en": "Fugi Frame"
+  },
+  "description": {
+    "en": "Controls a local Fugi/Pexar Frameo digital photo frame."
+  },
+  "category": ["tools"],
+  "tags": {
+    "en": ["photo", "frame", "frameo", "local"]
+  },
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png"
+  },
+  "author": {
+    "name": "Felix Krause"
+  }
+}

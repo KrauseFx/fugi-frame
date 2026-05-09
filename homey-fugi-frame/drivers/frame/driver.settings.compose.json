@@ -1,0 +1,24 @@
+[
+  {
+    "id": "base_url",
+    "type": "text",
+    "label": {
+      "en": "Fugi control URL"
+    },
+    "value": "",
+    "hint": {
+      "en": "Local URL of the Fugi Frame control API."
+    }
+  },
+  {
+    "id": "token",
+    "type": "password",
+    "label": {
+      "en": "Control token"
+    },
+    "value": "",
+    "hint": {
+      "en": "The frameo_control_token from config.frameo.json. Stored only in Homey device settings."
+    }
+  }
+]
